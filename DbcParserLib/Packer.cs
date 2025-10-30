@@ -75,7 +75,7 @@ namespace DbcParserLib
         /// <param name="RxMsg64">The 64 bit unsigned data message</param>
         /// <param name="signal">Signal containing dbc information</param>
         /// <returns>Returns a double value representing the unpacked signal</returns>
-        public static double RxSignalUnpack(uint64_T RxMsg64, Signal signal)
+        public static double RxSignalUnpack(uint64_T RxMsg64, Signal signal, bool signAndScale = true)
         {
             uint64_T iVal;
             uint64_T bitMask = signal.BitMask();
@@ -86,7 +86,7 @@ namespace DbcParserLib
             else // Big endian (Motorola)
                 iVal = ((MirrorMsg(RxMsg64) >> GetStartBitLE(signal)) & bitMask);
 
-            return RxUnpackApplySignAndScale(signal, iVal);
+            return RxUnpack(signal, iVal, signAndScale);
         }
 
         /// <summary>
@@ -95,7 +95,7 @@ namespace DbcParserLib
         /// <param name="receiveMessage">The message data</param>
         /// <param name="signal">Signal containing dbc information</param>
         /// <returns>Returns a double value representing the unpacked signal</returns>
-        public static double RxSignalUnpack(uint8_T[] receiveMessage, Signal signal)
+        public static double RxSignalUnpack(uint8_T[] receiveMessage, Signal signal, bool signAndScale = true)
         {
             var startBit = signal.StartBit;
             var message = receiveMessage;
@@ -112,7 +112,7 @@ namespace DbcParserLib
 
             var iVal = ExtractBits(message, startBit, signal.Length);
 
-            return RxUnpackApplySignAndScale(signal, iVal);
+            return RxUnpack(signal, iVal, signAndScale);
         }
 
         /// <summary>
@@ -164,7 +164,7 @@ namespace DbcParserLib
             return iVal;
         }
 
-        private static double RxUnpackApplySignAndScale(Signal signal, ulong value)
+        private static double RxUnpack(Signal signal, ulong value, bool applySignAndScale = true)
         {
             switch (signal.ValueType)
             {
@@ -182,13 +182,13 @@ namespace DbcParserLib
                             signedValue -= (1L << signal.Length);
                         }
                     }
-                    return (double)(signedValue * (decimal)signal.Factor + (decimal)signal.Offset);
+                    return !applySignAndScale ? signedValue : (double)(signedValue * (decimal)signal.Factor + (decimal)signal.Offset);
                 case DbcValueType.IEEEFloat:
-                    return FloatConverter.AsFloatingPoint((int)value) * signal.Factor + signal.Offset;
+                    return !applySignAndScale ? FloatConverter.AsFloatingPoint((int)value) : FloatConverter.AsFloatingPoint((int)value) * signal.Factor + signal.Offset;
                 case DbcValueType.IEEEDouble:
-                    return DoubleConverter.AsFloatingPoint(unchecked((int64_T)value)) * signal.Factor + signal.Offset;
+                    return !applySignAndScale ? DoubleConverter.AsFloatingPoint(unchecked((int64_T)value)) : DoubleConverter.AsFloatingPoint(unchecked((int64_T)value)) * signal.Factor + signal.Offset;
                 default:
-                    return (double)(value * (decimal)signal.Factor + (decimal)signal.Offset);
+                    return !applySignAndScale ? (double)(value) : (double)(value * (decimal)signal.Factor + (decimal)signal.Offset);
             }            
         }
 
