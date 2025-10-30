@@ -19,12 +19,17 @@ namespace DbcParserLib.Tests
                 Offset = 20
             };
 
-            var txMsg = Packer.TxSignalPack(-34.3, sig);
+            var value2Write = -34.3;
+            var rawValue = (value2Write - sig.Offset) / sig.Factor;
+
+            var txMsg = Packer.TxSignalPack(value2Write, sig);
             Assert.That(txMsg, Is.EqualTo(43816));
 
-            var val = Packer.RxSignalUnpack(txMsg, sig);
-            Assert.That(val, Is.EqualTo(-34.3).Within(1e-2));
+            var scaledVal = Packer.RxSignalUnpack(txMsg, sig);
+            Assert.That(scaledVal, Is.EqualTo(value2Write).Within(1e-2));
 
+            var unscaledVal = Packer.RxSignalUnpack(txMsg, sig, false);
+            Assert.That(unscaledVal, Is.EqualTo(rawValue).Within(1e-2));
 
             var byteMsg = new byte[8];
             Packer.TxSignalPack(byteMsg, - 34.3, sig);
